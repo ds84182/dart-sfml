@@ -1,0 +1,4 @@
+CFLAGS = -g -fPIC -std=c++11 -I/usr/lib/dart/include -I/usr/lib/dart -DDART_SHARED_LIB
+
+: foreach src/*.cpp src/command/*.cpp |> gcc $(CFLAGS) -c %f -o %o |> build/%B.o
+: build/*.o |> gcc -shared -Wl,-soname,libsfml.so -o %o %f -lsfml-window -lsfml-graphics -lsfml-system -lsfml-audio |> lib/libsfml.so
