@@ -65,6 +65,12 @@ namespace Graphics {
 		return object->value.as_send_port.id;
 	}
 
+	enum class UniformType {
+		Float, Float2, Float3, Float4,
+	  Int, Int2, Int3, Int4,
+	  Matrix2, Matrix3, Matrix4
+	};
+
 	enum class RenderThreadMessageType {
 		Init, // To Render Thread
 		StartFrame, // To Dart Thread
@@ -72,6 +78,7 @@ namespace Graphics {
 		SetCommands, // To Render Thread (Format of [RenderTargetPtr, [CommandPtr, ...], ...])
 		NewShader, // To Render Thread (ptr, vertexShaderStr, fragmentShaderStr, attributeLayout). We get a reply back with the ptr and the status
 		ShaderResult, // To Dart Thread (ptr, errorLog as string if failed or null)
+		SendUniform, // To Render Thread([ptr, uniformName, uniformType, data, count])
 	};
 
 	static void RenderThreadMessageHandler(Dart_Port dest_port_id, Dart_CObject *message) {
@@ -164,6 +171,66 @@ namespace Graphics {
 
 						Dart_PostCObject(rt->replyPort, &reply);
 						// TODO: Add the shader as a resource!
+					});
+				}
+				break;
+			case RenderThreadMessageType::SendUniform:
+				CheckArrayLength(message, 7); // shaderptr, name, type, data, count
+				{
+					int64_t shaderPointer = CheckInt(GetArray(message, 2));
+					std::shared_ptr<Shader> shader = *reinterpret_cast<std::shared_ptr<Shader>*>(shaderPointer);
+					std::string name = CheckString(GetArray(message, 3));
+					UniformType type = static_cast<UniformType>(CheckInt(GetArray(message, 4)));
+					Dart_CObject *dataObject = GetArray(message, 5);
+					int64_t count = CheckInt(GetArray(message, 6));
+
+					// Copy typed data to a new buffer
+					size_t length = dataObject->value.as_typed_data.length;
+					char *_data = new char[length];
+					SneekyPointer data = _data;
+					memcpy(_data, dataObject->value.as_typed_data.values, length);
+
+					rt->enqueue([=] {
+						shader->bind();
+						GLint location = shader->getUniformLocation(name);
+						switch (type) {
+							case UniformType::Float:
+								glUniform1fv(location, count, data);
+								break;
+							case UniformType::Float2:
+								glUniform2fv(location, count, data);
+								break;
+							case UniformType::Float3:
+								glUniform3fv(location, count, data);
+								break;
+							case UniformType::Float4:
+								glUniform4fv(location, count, data);
+								break;
+
+							case UniformType::Int:
+								glUniform1iv(location, count, data);
+								break;
+							case UniformType::Int2:
+								glUniform2iv(location, count, data);
+								break;
+							case UniformType::Int3:
+								glUniform3iv(location, count, data);
+								break;
+							case UniformType::Int4:
+								glUniform4iv(location, count, data);
+								break;
+
+							case UniformType::Matrix2:
+								glUniformMatrix2fv(location, count, false, data);
+								break;
+							case UniformType::Matrix3:
+								glUniformMatrix3fv(location, count, false, data);
+								break;
+							case UniformType::Matrix4:
+								glUniformMatrix4fv(location, count, false, data);
+								break;
+						}
+						delete _data;
 					});
 				}
 				break;
