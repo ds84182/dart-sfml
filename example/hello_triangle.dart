@@ -34,13 +34,16 @@ main() async {
   vao.bind(attrPosition, buffer, attrFmtPos2D);
 
   var clearCmd = new sf.ClearCommand(new sf.Color.rgba(0, 0, 0));
-  var shaderBindCmd = new sf.BindShaderCommand(shader);
 
+  var prepareFrame = new sf.CommandBuffer([clearCmd]);
+
+  var shaderBindCmd = new sf.BindShaderCommand(shader);
   var vaoBindCmd = new sf.BindVertexArrayCommand(vao);
   var drawArrayCmd = new sf.DrawArraysCommand(sf.PrimitiveMode.Triangles, 0, 3);
 
-  var commandList = new sf.CommandList(context, [clearCmd, shaderBindCmd, vaoBindCmd, drawArrayCmd]);
-  context.setCommands([commandList]);
+  var drawTriangle = new sf.CommandBuffer([shaderBindCmd, vaoBindCmd, drawArrayCmd]);
+
+  context.setCommands([prepareFrame, drawTriangle]);
 
   var limiter = new sf.FrameLimiter(60);
 

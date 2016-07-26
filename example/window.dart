@@ -6,8 +6,8 @@ main() async {
   int col = 0;
 
   var clearCmd = new sf.ClearCommand(new sf.Color.rgba(col, col, col));
-  var commandList = new sf.CommandList(context, [clearCmd]);
-  context.setCommands([commandList]);
+  var prepareFrame = new sf.CommandBuffer([clearCmd]);
+  context.setCommands([prepareFrame]);
 
   var limiter = new sf.FrameLimiter(60);
 
