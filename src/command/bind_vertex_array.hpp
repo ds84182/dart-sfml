@@ -18,7 +18,7 @@ class BindVertexArrayCommand : public RenderCommand<BindVertexArrayCommandData> 
 public:
   using RenderCommand::RenderCommand;
 
-  virtual void doRender(sf::RenderTarget *target, bool justUpdated) {
+  virtual void doRender(bool justUpdated) {
     if (data.vao) {
       data.vao->bind();
     }

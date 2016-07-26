@@ -20,7 +20,7 @@ class DrawArraysCommand : public RenderCommand<DrawArraysCommandData> {
 public:
   using RenderCommand::RenderCommand;
 
-  virtual void doRender(sf::RenderTarget *target, bool justUpdated) {
+  virtual void doRender(bool justUpdated) {
     if (data.mode) {
       glDrawArrays(data.mode, data.first, data.count);
     }

@@ -1,13 +1,15 @@
 #include "render_thread.hpp"
 
-void RenderCommandList::execute(RenderThread *thread) {
+#include "ogl.hpp"
+
+void CommandBuffer::execute(RenderThread *thread) {
   for (auto command : commands) {
     if (!thread->commandMap.count(command)) {
       thread->commandMap[command] = command->get(thread);
     }
 
     auto &realCommand = thread->commandMap[command];
-    realCommand->render(target, thread);
+    realCommand->render(thread);
     realCommand->frame = thread->currentFrame;
   }
 }
@@ -16,6 +18,8 @@ void RenderThread::main(sf::VideoMode videoMode, sf::String title) {
   sf::RenderWindow window(videoMode, title, sf::Style::Default, sf::ContextSettings(0, 0, 0, 3, 2));
   window.setFramerateLimit(0); // It is up to Dart to tell us when to present
   this->window = &window;
+
+  glEnable(GL_DEPTH_TEST);
 
   while (!stop) {
     sf::Event event;
@@ -26,8 +30,8 @@ void RenderThread::main(sf::VideoMode videoMode, sf::String title) {
       Dart_PostInteger(replyPort, 1);
 
       currentFrame++;
-      for (auto &commandList : commands) {
-        commandList.execute(this);
+      for (auto &commandBuffer : commands) {
+        commandBuffer.execute(this);
       }
       for (auto &pair : commandMap) {
         auto frameDiff = currentFrame-pair.second->frame;

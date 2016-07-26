@@ -114,6 +114,22 @@ public:
   }
 };
 
+class DartList {
+public:
+  DartHandle handle;
+  DartList(DartHandle handle) : handle(handle) {}
+
+  intptr_t length() {
+    intptr_t len;
+    DartHandle(Dart_ListLength(handle, &len));
+    return len;
+  }
+
+  DartHandle get(intptr_t index) {
+    return Dart_ListGetAt(handle, index);
+  }
+};
+
 class DartArgs {
 public:
   DartArgs(Dart_NativeArguments args) : args(args) {}

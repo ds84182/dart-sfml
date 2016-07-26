@@ -2,10 +2,13 @@ import "package:sfml/sfml.dart" as sf;
 import 'dart:typed_data';
 
 const sf.Attribute attrPosition = const sf.Attribute("attrPosition", 0);
+const sf.Attribute attrColor = const sf.Attribute("attrColor", 1);
 const List<sf.Attribute> attributes = const [
-  attrPosition
+  attrPosition, attrColor
 ];
+
 const sf.AttributeFormat attrFmtPos2D = const sf.AttributeFormat(sf.AttributeType.Float, 2);
+const sf.AttributeFormat attrFmtColorF4 = const sf.AttributeFormat(sf.AttributeType.Float, 4);
 
 main() async {
   var context = new sf.RenderContext(new sf.VideoMode(800, 600), "dart:sf");
@@ -14,24 +17,32 @@ main() async {
   await shader.compile(
   """
   attribute vec4 attrPosition;
+  attribute vec4 attrColor;
+
+  varying vec4 varyColor;
+
   void main() {
+    varyColor = attrColor;
     gl_Position = attrPosition;
   }
   """,
   """
+  varying vec4 varyColor;
+
   void main() {
-    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+    gl_FragColor = varyColor;
   }
   """, attributes);
 
   var vao = new sf.VertexArray(context);
   var data = new Float32List.fromList([
-   0.0, 0.5,
-   -0.5, -0.5,
-   0.5, -0.5
+   0.0, 0.5, 1.0, 0.0, 0.0, 1.0,
+   -0.5, -0.5, 0.0, 1.0, 0.0, 1.0,
+   0.5, -0.5, 0.0, 0.0, 1.0, 1.0
   ]);
   var buffer = new sf.VertexBuffer(context, data, sf.BufferUsage.StaticDraw);
-  vao.bind(attrPosition, buffer, attrFmtPos2D);
+  vao.bind(attrPosition, buffer, attrFmtPos2D, 6*Float32List.BYTES_PER_ELEMENT);
+  vao.bind(attrColor, buffer, attrFmtColorF4, 6*Float32List.BYTES_PER_ELEMENT, 2*Float32List.BYTES_PER_ELEMENT);
 
   var clearCmd = new sf.ClearCommand(new sf.Color.rgba(0, 0, 0));
 

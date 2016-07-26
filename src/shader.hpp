@@ -20,6 +20,7 @@ public:
   GLuint vertexShader;
   GLuint fragmentShader;
   std::string errorLog;
+  std::unordered_map<std::string, Uniform> uniforms;
 
   Shader() {};
 
@@ -38,16 +39,11 @@ public:
     }
   }
 
-  void bindAttributeLocation(const std::string &name, const Attribute attrib) {
-    glBindAttribLocation(program, attrib, name.c_str());
-  }
-
-  Attribute getAttributeLocation(const std::string &name) const {
-    return glGetAttribLocation(program, name.c_str());
-  }
-
-  Uniform getUniformLocation(const std::string &name) const {
-    return glGetUniformLocation(program, name.c_str());
+  Uniform getUniformLocation(const std::string &name) {
+    if (uniforms.count(name)) {
+      return uniforms[name];
+    }
+    return uniforms[name] = glGetUniformLocation(program, name.c_str());
   }
 
   void bind() const {

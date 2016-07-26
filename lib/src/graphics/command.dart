@@ -6,9 +6,12 @@ class Command extends NativeObject {
   void dirty() native "Command::dirty";
 }
 
-class CommandList {
-  final RenderTarget target;
-  final List<Command> commands;
+class CommandBuffer extends NativeObject {
+  CommandBuffer(List<Command> commands) {
+    _init();
+    update(commands);
+  }
 
-  CommandList(this.target, this.commands);
+  void _init() native "CommandBuffer";
+  void update(List<Command> commands) native "CommandBuffer::update";
 }

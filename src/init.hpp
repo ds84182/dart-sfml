@@ -18,24 +18,17 @@ static inline Dart_Handle $(Dart_Handle handle) {
 	return handle;
 }
 
-class AbstractContainer {
+// ;)
+class SneekyPointer {
 public:
-	AbstractContainer() {}
-	AbstractContainer(const AbstractContainer&) = delete;
-	AbstractContainer(AbstractContainer&&) = delete;
+	void *ptr;
+	template <typename T>
+	SneekyPointer(T *p) : ptr(reinterpret_cast<void*>(p)) {}
+	template <typename T>
+	operator T*() {return reinterpret_cast<T*>(ptr);}
+	template <typename T>
+	operator const T*() const {return reinterpret_cast<const T*>(ptr);}
 };
-
-// The container class is (hackishly) used to let us pass references to values around
-template <typename T>
-class Container : AbstractContainer {
-public:
-	T value;
-
-	template <typename... Args>
-	Container(Args... args) : value(std::move(args)...) {}
-};
-
-static_assert(offsetof(Container<void*>, value) == 0, "Container value offset is not 0");
 
 template <typename T>
 static inline void SetPointer(Dart_Handle handle, T *ptr) {
