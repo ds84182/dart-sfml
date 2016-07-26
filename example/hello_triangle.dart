@@ -1,4 +1,5 @@
 import "package:sfml/sfml.dart" as sf;
+import 'package:vector_math/vector_math.dart';
 import 'dart:typed_data';
 
 const sf.Attribute attrPosition = const sf.Attribute("attrPosition", 0);
@@ -33,7 +34,7 @@ main() async {
   var buffer = new sf.VertexBuffer(context, data, sf.BufferUsage.StaticDraw);
   vao.bind(attrPosition, buffer, attrFmtPos2D);
 
-  var clearCmd = new sf.ClearCommand(new sf.Color.rgba(0, 0, 0));
+  var clearCmd = new sf.ClearCommand(Colors.black);
 
   var prepareFrame = new sf.CommandBuffer([clearCmd]);
 

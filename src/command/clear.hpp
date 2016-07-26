@@ -6,10 +6,10 @@
 
 class ClearCommandData {
 public:
-  sf::Color color;
+  float color[4];
+  GLbitfield mask;
 
   ClearCommandData() {}
-  ClearCommandData(sf::Color color) : color(color) {}
 };
 
 using ClearCommandElement = RenderCommandElement<ClearCommandData, class ClearCommand>;
@@ -19,8 +19,9 @@ public:
   using RenderCommand::RenderCommand;
 
   virtual void doRender(bool justUpdated) {
-    //glClearColor(data.)
-    glClearColor(0,0,0,1);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    if (justUpdated) {
+      glClearColor(data.color[0], data.color[1], data.color[2], data.color[3]);
+    }
+    glClear(data.mask);
   }
 };
