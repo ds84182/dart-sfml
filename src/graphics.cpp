@@ -554,6 +554,30 @@ namespace Graphics {
 		spp->data.count = args[3].asUInt();
 	}
 
+	static void _CommandBuffer(Dart_NativeArguments _args) {
+		DartArgs args = _args;
+
+		CommandBuffer *cmdbuf = new CommandBuffer();
+
+		auto object = args[0];
+		object.setField("_ptr", cmdbuf);
+		GCHandle(object, sizeof(CommandBuffer), MakeDeleter(cmdbuf));
+	}
+
+	static void _CommandBuffer_update(Dart_NativeArguments _args) {
+		DartArgs args = _args;
+
+		auto cmdbuf = args[0].getField("_ptr").asPointer<CommandBuffer>();
+		DartList list = args[1];
+
+		cmdbuf->commands.clear();
+		cmdbuf->commands.reserve(list.length());
+		for (intptr_t i=0; i<list.length(); i++) {
+			auto p = list.get(i).getField("_ptr");
+			cmdbuf->commands.emplace_back(*p.asPointer<std::shared_ptr<GenericRenderCommandElement>>());
+		}
+	}
+
 	FunctionMap functions = {
 		{"RenderContext", &RenderContext},
 
@@ -575,6 +599,8 @@ namespace Graphics {
 		{"VertexArray", &_VertexArray},
 		{"VertexArray::enableAndBind", &_VertexArray_enableAndBind},
 		{"VertexBuffer", &_VertexBuffer},
+		{"CommandBuffer", &_CommandBuffer},
+		{"CommandBuffer::update", &_CommandBuffer_update},
 	};
 
 }

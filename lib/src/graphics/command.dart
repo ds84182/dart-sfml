@@ -12,3 +12,13 @@ class CommandList {
 
   CommandList(this.target, this.commands);
 }
+
+class CommandBuffer extends NativeObject {
+  CommandBuffer(List<Command> commands) {
+    _init();
+    update(commands);
+  }
+
+  void _init() native "CommandBuffer";
+  void update(List<Command> commands) native "CommandBuffer::update";
+}
