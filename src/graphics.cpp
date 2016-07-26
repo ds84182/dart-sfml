@@ -75,7 +75,7 @@ namespace Graphics {
 		Init, // To Render Thread
 		StartFrame, // To Dart Thread
 		RenderFrame, // To Render Thread
-		SetCommands, // To Render Thread (Format of [RenderTargetPtr, [CommandPtr, ...], ...])
+		SetCommands, // To Render Thread (Format of [CommandBufPtr...])
 		NewShader, // To Render Thread (ptr, vertexShaderStr, fragmentShaderStr, attributeLayout). We get a reply back with the ptr and the status
 		ShaderResult, // To Dart Thread (ptr, errorLog as string if failed or null)
 		SendUniform, // To Render Thread([ptr, uniformName, uniformType, data, count])
@@ -105,25 +105,17 @@ namespace Graphics {
 				// Add a message to do proper sync
 				CheckArrayLength(message, 3);
 				{
-					std::vector<RenderCommandList> commandLists;
 					Dart_CObject *list = GetArray(message, 2);
-					for (int i=0; i<list->value.as_array.length; i += 2) {
-						auto rtarget = reinterpret_cast<sf::RenderTarget*>(CheckInt(GetArray(list, i)));
-						std::vector<std::shared_ptr<GenericRenderCommandElement>> commands;
-						if (reinterpret_cast<intptr_t>(rtarget) == reinterpret_cast<intptr_t>(rt)) {
-							rtarget = nullptr;
-						}
-						Dart_CObject *commandList = GetArray(list, i+1);
-						for (int j=0; j<commandList->value.as_array.length; j++) {
-							commands.push_back(*reinterpret_cast<std::shared_ptr<GenericRenderCommandElement>*>(CheckInt(GetArray(commandList, j))));
-						}
-						commandLists.emplace_back(rtarget, std::move(commands));
+					std::vector<CommandBuffer> commandBuffers;
+					auto len = list->value.as_array.length;
+
+					commandBuffers.reserve(len);
+					for (int i=0; i<len; i++) {
+						commandBuffers.emplace_back(*reinterpret_cast<CommandBuffer*>(CheckInt(GetArray(list, i))));
 					}
-					rt->enqueue([rt, commandLists]{
-						rt->commands = std::move(commandLists);
-						for (auto &commandList : rt->commands) {
-							if (commandList.target == nullptr) commandList.target = rt->window;
-						}
+
+					rt->enqueue([rt, commandBuffers] {
+						rt->commands = std::move(commandBuffers);
 					});
 				}
 				break;

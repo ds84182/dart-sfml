@@ -27,7 +27,7 @@ class RenderThread;
 class GenericRenderCommand {
 public:
   virtual ~GenericRenderCommand() = default;
-  virtual void render(sf::RenderTarget *target, RenderThread *thread) = 0;
+  virtual void render(RenderThread *thread) = 0;
   uint64_t frame = 0;
 };
 
@@ -52,12 +52,9 @@ private:
   std::atomic<bool> _dirty {true};
 };
 
-class RenderCommandList {
+class CommandBuffer {
 public:
-  sf::RenderTarget *target;
   std::vector<std::shared_ptr<GenericRenderCommandElement>> commands;
-
-  RenderCommandList(sf::RenderTarget *t, std::vector<std::shared_ptr<GenericRenderCommandElement>> &&c) : target(t), commands(c) {}
 
   void execute(RenderThread *thread);
 };
@@ -83,7 +80,7 @@ public:
   }
 
   Dart_Port replyPort = ILLEGAL_PORT;
-  std::vector<RenderCommandList> commands;
+  std::vector<CommandBuffer> commands;
   std::unordered_map<std::shared_ptr<GenericRenderCommandElement>, std::unique_ptr<GenericRenderCommand>> commandMap;
   uint64_t currentFrame = 0;
   sf::RenderWindow *window;
@@ -124,19 +121,19 @@ public:
   RenderCommand(Data *data, GenericRenderCommandElement *element) : dataRef(data), element(element) {}
   virtual ~RenderCommand() = default;
 
-  virtual void render(sf::RenderTarget *target, RenderThread *thread) {
+  virtual void render(RenderThread *thread) {
     bool justUpdated;
     if (justUpdated = element->clean()) {
       data = *dataRef; // Copy
     }
 
-    doRender(target, justUpdated);
+    doRender(justUpdated);
   }
 
   bool isValid() {return data;}
 protected:
   Data data;
-  virtual void doRender(sf::RenderTarget *target, bool justUpdated) = 0;
+  virtual void doRender(bool justUpdated) = 0;
 private:
   Data *dataRef;
   GenericRenderCommandElement *element;

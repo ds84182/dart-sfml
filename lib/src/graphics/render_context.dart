@@ -4,7 +4,7 @@ enum _RenderThreadMessageType {
   Init, // To Render Thread
   StartFrame, // To Dart Thread
   RenderFrame, // To Render Thread
-  SetCommands, // To Render Thread (Format of [RenderTarget, [CommandPtr, ...], ...])
+  SetCommands, // To Render Thread (Format of [CommandBufPtr...])
   NewShader, // To Render Thread ([ptr, vertexShaderStr, fragmentShaderStr, attributeLayout]). We get a reply back with the ptr and the status
   ShaderResult, // To Dart Thread (ptr, errorLog as string if failed or null
   SendUniform, // To Render Thread([ptr, uniformName, uniformType, data, count])
@@ -57,10 +57,10 @@ class RenderContext extends RenderTarget with Window {
     _port.send([_ptr, _RenderThreadMessageType.RenderFrame.index]);
   }
 
-  void setCommands(List<CommandList> list) {
+  void setCommands(List<CommandBuffer> list) {
     _checkReady();
     var nativeList = list
-      .expand((cl) => [cl.target._ptr, cl.commands.map((cmd) => cmd._ptr).toList(growable: false)])
+      .map((cb) => cb._ptr)
       .toList(growable: false);
     _port.send([_ptr, _RenderThreadMessageType.SetCommands.index, nativeList]);
   }
