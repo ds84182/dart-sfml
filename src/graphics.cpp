@@ -282,10 +282,7 @@ namespace Graphics {
 	static void _ClearCommand(Dart_NativeArguments _args) {
 		DartArgs args = _args;
 
-		uint64_t color = args[1];
-
 		ClearCommandElement *command = new ClearCommandElement();
-		command->data.color = sf::Color(color);
 		auto spp = new std::shared_ptr<ClearCommandElement>(command);
 
 		args[0].setField("_ptr", spp);
@@ -295,10 +292,30 @@ namespace Graphics {
 	static void _ClearCommand_setColor(Dart_NativeArguments _args) {
 		DartArgs args = _args;
 
-		uint64_t color = args[1];
+		auto elem = *args[0].getField("_ptr").asPointer<std::shared_ptr<ClearCommandElement>>();
+		DartTypedData color = args[1];
+		memcpy(&elem->data.color, color, sizeof(float)*4);
+	}
+
+	static void _ClearCommand_setMask(Dart_NativeArguments _args) {
+		DartArgs args = _args;
+
+		uint64_t mask = args[1];
+
+		GLbitfield maskGL = 0;
+
+		if (mask & 1) {
+			maskGL |= GL_COLOR_BUFFER_BIT;
+		}
+		if (mask & 2) {
+			maskGL |= GL_DEPTH_BUFFER_BIT;
+		}
+		if (mask & 4) {
+			maskGL |= GL_STENCIL_BUFFER_BIT;
+		}
 
 		auto elem = *args[0].getField("_ptr").asPointer<std::shared_ptr<ClearCommandElement>>();
-		elem->data.color = sf::Color(color);
+		elem->data.mask = maskGL;
 	}
 
 	static void _Shader(Dart_NativeArguments _args) {
@@ -580,6 +597,7 @@ namespace Graphics {
 
 		{"ClearCommand", &_ClearCommand},
 		{"ClearCommand::setColor", &_ClearCommand_setColor},
+		{"ClearCommand::setMask", &_ClearCommand_setMask},
 
 		{"BindVertexArrayCommand", &_BindVertexArrayCommand},
 		{"BindVertexArrayCommand::setVertexArray", &_BindVertexArrayCommand_setVertexArray},

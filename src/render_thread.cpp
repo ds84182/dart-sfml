@@ -19,8 +19,6 @@ void RenderThread::main(sf::VideoMode videoMode, sf::String title) {
   window.setFramerateLimit(0); // It is up to Dart to tell us when to present
   this->window = &window;
 
-  glEnable(GL_DEPTH_TEST);
-
   while (!stop) {
     sf::Event event;
     while (window.pollEvent(event));

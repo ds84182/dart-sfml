@@ -83,6 +83,7 @@ public:
 class DartTypedData {
 public:
   DartHandle handle;
+  bool released = false;
   Dart_TypedData_Type typ;
   void *data = nullptr;
   size_t size = 0;
@@ -109,8 +110,18 @@ public:
 		}
   }
 
+  template <typename T>
+  operator T*() {return reinterpret_cast<T*>(data);}
+
   ~DartTypedData() {
-    Dart_TypedDataReleaseData(handle);
+    release();
+  }
+
+  void release() {
+    if (!released) {
+      Dart_TypedDataReleaseData(handle);
+      released = true;
+    }
   }
 };
 
