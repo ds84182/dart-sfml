@@ -8,6 +8,7 @@
 #include "command/bind_vertex_array.hpp"
 #include "command/clear.hpp"
 #include "command/draw_arrays.hpp"
+#include "command/capability.hpp"
 
 #include <algorithm>
 #include <cstring>
@@ -563,6 +564,62 @@ namespace Graphics {
 		spp->data.count = args[3].asUInt();
 	}
 
+	static void _CapabilityCommand(Dart_NativeArguments _args) {
+		DartArgs args = _args;
+
+		CapabilityCommandElement *command = new CapabilityCommandElement();
+		auto spp = new std::shared_ptr<CapabilityCommandElement>(command);
+		command->data.enable = args[1];
+
+		auto object = args[0];
+		object.setField("_ptr", spp);
+		GCHandle(object, sizeof(CapabilityCommandElement), MakeDeleter(spp));
+	}
+
+	enum class RenderCapability {
+		Blend,
+	  CullFace,
+	  DepthTest,
+	  PolygonOffset,
+	  ScissorTest,
+	  StencilTest
+	};
+
+	static void _CapabilityCommand_set(Dart_NativeArguments _args) {
+		DartArgs args = _args;
+
+		auto spp = *args[0].getField("_ptr").asPointer<std::shared_ptr<CapabilityCommandElement>>();
+		auto mode = static_cast<RenderCapability>(args[1].asUInt());
+
+		GLenum capEnum;
+
+		switch (mode) {
+			case RenderCapability::Blend:
+				capEnum = GL_BLEND;
+				break;
+			case RenderCapability::CullFace:
+				capEnum = GL_CULL_FACE;
+				break;
+			case RenderCapability::DepthTest:
+				capEnum = GL_DEPTH_TEST;
+				break;
+			case RenderCapability::PolygonOffset:
+				capEnum = GL_POLYGON_OFFSET_FILL;
+				break;
+			case RenderCapability::ScissorTest:
+				capEnum = GL_SCISSOR_TEST;
+				break;
+			case RenderCapability::StencilTest:
+				capEnum = GL_STENCIL_TEST;
+				break;
+			default:
+				printf("???\n");
+				abort();
+		}
+
+		spp->data.cap = capEnum;
+	}
+
 	static void _CommandBuffer(Dart_NativeArguments _args) {
 		DartArgs args = _args;
 
@@ -604,6 +661,9 @@ namespace Graphics {
 
 		{"DrawArraysCommand", &_DrawArraysCommand},
 		{"DrawArraysCommand::setData", &_DrawArraysCommand_setData},
+
+		{"CapabilityCommand", &_CapabilityCommand},
+		{"CapabilityCommand::set", &_CapabilityCommand_set},
 
 		{"Shader", &_Shader},
 		{"VertexArray", &_VertexArray},

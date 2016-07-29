@@ -1,6 +1,6 @@
 part of sfml;
 
-@deprecate
+@deprecated
 class Color {
 	static final Expando<Vector4> _color2Vec4 = new Expando();
 

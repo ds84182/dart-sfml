@@ -22,6 +22,7 @@ part 'src/graphics/command/bind_shader.dart';
 part 'src/graphics/command/bind_vertex_array.dart';
 part 'src/graphics/command/clear.dart';
 part 'src/graphics/command/draw_arrays.dart';
+part 'src/graphics/command/render_capability.dart';
 
 part 'src/util/frame_limiter.dart';
 part 'src/util/pair.dart';
