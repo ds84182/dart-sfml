@@ -18,7 +18,7 @@ class BindVertexArrayCommand : public RenderCommand<BindVertexArrayCommandData> 
 public:
   using RenderCommand::RenderCommand;
 
-  virtual void doRender(bool justUpdated) {
+  virtual void doRender(RenderThread *thread, bool justUpdated) {
     if (data.vao) {
       data.vao->bind();
     }

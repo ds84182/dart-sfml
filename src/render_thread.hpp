@@ -83,6 +83,7 @@ public:
   std::vector<CommandBuffer> commands;
   std::unordered_map<std::shared_ptr<GenericRenderCommandElement>, std::unique_ptr<GenericRenderCommand>> commandMap;
   uint64_t currentFrame = 0;
+  std::shared_ptr<class Shader> shader;
   sf::RenderWindow *window;
   bool render = false;
   bool stop = false;
@@ -127,13 +128,13 @@ public:
       data = *dataRef; // Copy
     }
 
-    doRender(justUpdated);
+    doRender(thread, justUpdated);
   }
 
   bool isValid() {return data;}
 protected:
   Data data;
-  virtual void doRender(bool justUpdated) = 0;
+  virtual void doRender(RenderThread *thread, bool justUpdated) = 0;
 private:
   Data *dataRef;
   GenericRenderCommandElement *element;
