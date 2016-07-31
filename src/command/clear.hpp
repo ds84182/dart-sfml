@@ -18,7 +18,7 @@ class ClearCommand : public RenderCommand<ClearCommandData> {
 public:
   using RenderCommand::RenderCommand;
 
-  virtual void doRender(bool justUpdated) {
+  virtual void doRender(RenderThread *thread, bool justUpdated) {
     if (justUpdated) {
       glClearColor(data.color[0], data.color[1], data.color[2], data.color[3]);
     }

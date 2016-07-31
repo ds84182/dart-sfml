@@ -7,7 +7,6 @@ enum _RenderThreadMessageType {
   SetCommands, // To Render Thread (Format of [CommandBufPtr...])
   NewShader, // To Render Thread ([ptr, vertexShaderStr, fragmentShaderStr, attributeLayout]). We get a reply back with the ptr and the status
   ShaderResult, // To Dart Thread (ptr, errorLog as string if failed or null
-  SendUniform, // To Render Thread([ptr, uniformName, uniformType, data, count])
 }
 
 class RenderContext extends RenderTarget with Window {
@@ -85,9 +84,5 @@ class RenderContext extends RenderTarget with Window {
     _shadersWaitingResult[shader._ptr] = completer;
     _port.send([_ptr, _RenderThreadMessageType.NewShader.index, shader._ptr, vs, fs, attrLocList]);
     return completer.future;
-  }
-
-  void _sendUniform(Shader shader, String name, int type, TypedData data, int count) {
-    _port.send([_ptr, _RenderThreadMessageType.SendUniform.index, shader._ptr, name, type, data, count]);
   }
 }

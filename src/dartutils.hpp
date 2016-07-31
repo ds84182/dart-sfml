@@ -59,6 +59,8 @@ public:
     return std::string(str);
   }
 
+  operator const std::string() {return asString();}
+
   template <typename T>
   T *asPointer() {
     return reinterpret_cast<T*>(asUInt());
@@ -86,10 +88,12 @@ public:
   bool released = false;
   Dart_TypedData_Type typ;
   void *data = nullptr;
+  size_t baseSize = 0;
   size_t size = 0;
 
   DartTypedData(DartHandle handle) : handle(handle) {
     Dart_TypedDataAcquireData(handle, &typ, &data, (intptr_t*)&size);
+    baseSize = size;
     switch (typ) {
 			case Dart_TypedData_kInt16:
 			case Dart_TypedData_kUint16:
@@ -115,6 +119,12 @@ public:
 
   ~DartTypedData() {
     release();
+  }
+
+  template <typename T>
+  void copyInto(std::vector<T> &vector) {
+    vector.resize(size/sizeof(T));
+    memcpy(vector.data(), data, size);
   }
 
   void release() {

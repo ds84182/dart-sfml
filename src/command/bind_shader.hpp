@@ -18,9 +18,10 @@ class BindShaderCommand : public RenderCommand<BindShaderCommandData> {
 public:
   using RenderCommand::RenderCommand;
 
-  virtual void doRender(bool justUpdated) {
+  virtual void doRender(RenderThread *thread, bool justUpdated) {
     if (data.shader) {
       data.shader->bind();
+      thread->shader = data.shader;
     }
   }
 };
