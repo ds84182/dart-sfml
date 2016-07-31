@@ -11,30 +11,32 @@ class FrameLimiter {
   int _fps = 0;
   int get framecount => framecount;
   int get fps => _fps;
+  final Stopwatch _fpsStopwatch = new Stopwatch();
   StreamController<int> _fpsStreamCtrl = new StreamController.broadcast();
   Stream<int> get fpsStream => _fpsStreamCtrl.stream;
 
-  Timer _resetTimer;
-
-  FrameLimiter(this.framerate, [bool resetFrameCount = true]) {
+  FrameLimiter(this.framerate) {
     _frameDuration = const Duration(seconds: 1)~/framerate;
-    if (resetFrameCount) {
-      _resetTimer = new Timer.periodic(const Duration(seconds: 1), (_) {
-        _fps = _framecount;
-        _framecount = 0;
-        _fpsStreamCtrl.add(_fps);
-      });
-    }
     _stopwatch.start();
+    _fpsStopwatch.start();
   }
 
   void stop() {
-    if (_resetTimer != null) _resetTimer.cancel();
     _stopwatch.stop();
+    _fpsStopwatch.stop();
   }
 
   void reset() {
     _framecount = 0;
+  }
+
+  void _updateFPS() {
+    if (_fpsStopwatch.elapsedMilliseconds > 1000) {
+      _fpsStopwatch.reset();
+      _fps = _framecount;
+      _framecount = 0;
+      _fpsStreamCtrl.add(_fps);
+    }
   }
 
   Future<double> get sync {
@@ -43,12 +45,14 @@ class FrameLimiter {
       double dt = _stopwatch.elapsedTicks/_stopwatch.frequency;
       _stopwatch..reset()..start();
       _framecount++;
+      _updateFPS();
       return new Future.value(dt);
     } else {
       return new Future.delayed(_frameDuration-delta, () {
         double dt = _stopwatch.elapsedTicks/_stopwatch.frequency;
         _stopwatch..reset()..start();
         _framecount++;
+        _updateFPS();
         return dt;
       });
     }
