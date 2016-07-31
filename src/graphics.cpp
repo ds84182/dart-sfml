@@ -3,6 +3,7 @@
 #include "shader.hpp"
 #include "vertex_array.hpp"
 #include "vertex_buffer.hpp"
+#include "index_buffer.hpp"
 
 #include "command/bind_shader.hpp"
 #include "command/bind_vertex_array.hpp"
@@ -288,6 +289,91 @@ namespace Graphics {
 		GCHandle(args[0], sizeof(VertexBuffer), MakeDeleter(spp));
 	}
 
+	// IndexBuffer
+
+	enum class IndexBufferElementType {
+		Int, Short, Byte
+	};
+
+	static void _IndexBuffer(Dart_NativeArguments _args) {
+		DartArgs args = _args;
+
+		IndexBuffer *ibo = new IndexBuffer();
+		auto spp = new std::shared_ptr<IndexBuffer>(ibo);
+
+		char *dataCopy;
+		size_t size;
+		{
+			DartTypedData typedData = args[2];
+			dataCopy = new char[typedData.size];
+			size = typedData.size;
+			memcpy(dataCopy, reinterpret_cast<char*>(typedData.data), typedData.size);
+		}
+
+		IndexBufferElementType type = static_cast<IndexBufferElementType>(args[3].asUInt());
+		GLenum typeEnum;
+		switch (type) {
+			case IndexBufferElementType::Int:
+				typeEnum = GL_UNSIGNED_INT;
+				break;
+			case IndexBufferElementType::Short:
+				typeEnum = GL_UNSIGNED_SHORT;
+				break;
+			case IndexBufferElementType::Byte:
+				typeEnum = GL_UNSIGNED_BYTE;
+				break;
+			default:
+				printf("???\n");
+				abort();
+		}
+
+		BufferUsage usage = static_cast<BufferUsage>(args[4].asUInt());
+		GLenum usageEnum;
+		switch (usage) {
+			case BufferUsage::StreamDraw:
+				usageEnum = GL_STREAM_DRAW;
+				break;
+			case BufferUsage::StreamRead:
+				usageEnum = GL_STREAM_READ;
+				break;
+			case BufferUsage::StreamCopy:
+				usageEnum = GL_STREAM_COPY;
+				break;
+			case BufferUsage::StaticDraw:
+				usageEnum = GL_STATIC_DRAW;
+				break;
+			case BufferUsage::StaticRead:
+				usageEnum = GL_STATIC_READ;
+				break;
+			case BufferUsage::StaticCopy:
+				usageEnum = GL_STATIC_COPY;
+				break;
+			case BufferUsage::DynamicDraw:
+				usageEnum = GL_DYNAMIC_DRAW;
+				break;
+			case BufferUsage::DynamicRead:
+				usageEnum = GL_DYNAMIC_READ;
+				break;
+			case BufferUsage::DynamicCopy:
+				usageEnum = GL_DYNAMIC_COPY;
+				break;
+			default:
+				printf("???\n");
+				abort();
+		}
+
+		RenderThread *rt = args[1].asPointer<RenderThread>();
+
+		rt->enqueue([=] {
+			ibo->init(dataCopy, size, typeEnum, usageEnum);
+			delete dataCopy;
+			// TODO: Give resource to RenderThread
+		});
+
+		args[0].setField("_ptr", spp);
+		GCHandle(args[0], sizeof(IndexBuffer), MakeDeleter(spp));
+	}
+
 	// BindVertexArrayCommand
 
 	static void _BindVertexArrayCommand(Dart_NativeArguments _args) {
@@ -512,6 +598,9 @@ namespace Graphics {
 		{"VertexArray", &_VertexArray},
 		{"VertexArray::enableAndBind", &_VertexArray_enableAndBind},
 		{"VertexBuffer", &_VertexBuffer},
+		// TODO: {"VertexBuffer::update", &_VertexBuffer_update},
+		{"IndexBuffer", &_IndexBuffer},
+		// TODO: {"IndexBuffer::update", &_IndexBuffer_update},
 		{"CommandBuffer", &_CommandBuffer},
 		{"CommandBuffer::update", &_CommandBuffer_update},
 	};

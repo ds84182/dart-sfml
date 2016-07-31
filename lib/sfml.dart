@@ -11,6 +11,7 @@ import 'package:vector_math/vector_math.dart';
 ////////
 
 part 'src/graphics/color.dart';
+part 'src/graphics/index_buffer.dart';
 part 'src/graphics/render_target.dart';
 part 'src/graphics/render_context.dart';
 part 'src/graphics/shader.dart';
