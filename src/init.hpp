@@ -18,6 +18,11 @@ static inline Dart_Handle $(Dart_Handle handle) {
 	return handle;
 }
 
+template <typename T>
+static std::function<void()> MakeDeleter(T *obj) {
+	return [=]() {delete obj;};
+}
+
 // ;)
 class SneekyPointer {
 public:

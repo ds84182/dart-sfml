@@ -22,150 +22,9 @@ namespace Graphics {
 
 	// RenderContext
 
-	Dart_Port renderThreadPort = ILLEGAL_PORT;
+	static Dart_Port renderThreadPort = ILLEGAL_PORT;
 
-	static inline void CheckArray(Dart_CObject *object) {
-		if (object->type != Dart_CObject_kArray) {
-			printf("Abort: Object is not an Array\n");
-			abort();
-		}
-	}
-
-	static inline void CheckArrayLength(Dart_CObject *object, intptr_t length) {
-		if (object->value.as_array.length < length) {
-			printf("Abort: Object Array is not long enough %ld < %ld\n", object->value.as_array.length, length);
-			abort();
-		}
-	}
-
-	static inline Dart_CObject *GetArray(Dart_CObject *object, intptr_t index) {
-		return object->value.as_array.values[index];
-	}
-
-	static inline int64_t CheckInt(Dart_CObject *object) {
-		if (object->type != Dart_CObject_kInt32 && object->type != Dart_CObject_kInt64) {
-			printf("Abort: Object is not an Integer\n");
-			abort();
-		}
-		if (object->type == Dart_CObject_kInt32) return object->value.as_int32;
-		return object->value.as_int64;
-	}
-
-	static inline std::string CheckString(Dart_CObject *object) {
-		if (object->type != Dart_CObject_kString) {
-			printf("Abort: Object is not a String\n");
-			abort();
-		}
-		return object->value.as_string;
-	}
-
-	static inline Dart_Port CheckPort(Dart_CObject *object) {
-		if (object->type != Dart_CObject_kSendPort) {
-			printf("Abort: Object is not a SendPort\n");
-			abort();
-		}
-		return object->value.as_send_port.id;
-	}
-
-	enum class RenderThreadMessageType {
-		Init, // To Render Thread
-		StartFrame, // To Dart Thread
-		RenderFrame, // To Render Thread
-		SetCommands, // To Render Thread (Format of [CommandBufPtr...])
-		NewShader, // To Render Thread (ptr, vertexShaderStr, fragmentShaderStr, attributeLayout). We get a reply back with the ptr and the status
-		ShaderResult, // To Dart Thread (ptr, errorLog as string if failed or null)
-	};
-
-	static void RenderThreadMessageHandler(Dart_Port dest_port_id, Dart_CObject *message) {
-		CheckArray(message);
-		CheckArrayLength(message, 2);
-
-		RenderThread *rt = reinterpret_cast<RenderThread*>(CheckInt(GetArray(message, 0)));
-		RenderThreadMessageType type = static_cast<RenderThreadMessageType>(CheckInt(GetArray(message, 1)));
-
-		switch(type) {
-			case RenderThreadMessageType::Init:
-				// Add an initialization message to the render thread
-				rt->enqueue(std::bind([rt](Dart_Port port) {
-					rt->replyPort = port;
-				}, CheckPort(GetArray(message, 2))));
-				break;
-			case RenderThreadMessageType::RenderFrame:
-				// Add a message to kick off the render
-				rt->enqueue([rt]{
-					rt->render = true;
-				});
-				break;
-			case RenderThreadMessageType::SetCommands:
-				// Add a message to do proper sync
-				CheckArrayLength(message, 3);
-				{
-					Dart_CObject *list = GetArray(message, 2);
-					std::vector<CommandBuffer> commandBuffers;
-					auto len = list->value.as_array.length;
-
-					commandBuffers.reserve(len);
-					for (int i=0; i<len; i++) {
-						commandBuffers.emplace_back(*reinterpret_cast<CommandBuffer*>(CheckInt(GetArray(list, i))));
-					}
-
-					rt->enqueue([rt, commandBuffers] {
-						rt->commands = std::move(commandBuffers);
-					});
-				}
-				break;
-			case RenderThreadMessageType::NewShader:
-				CheckArrayLength(message, 6);
-				{
-					int64_t shaderPointer = CheckInt(GetArray(message, 2));
-					std::shared_ptr<Shader> shader = *reinterpret_cast<std::shared_ptr<Shader>*>(shaderPointer);
-					std::string vs = CheckString(GetArray(message, 3));
-					std::string fs = CheckString(GetArray(message, 4));
-					std::unordered_map<GLuint, std::string> attributeLocations;
-					Dart_CObject *attributeLocArray = GetArray(message, 5);
-
-					if (attributeLocArray->type != Dart_CObject_kNull) {
-						GLuint current = 0;
-						while (current < attributeLocArray->value.as_array.length) {
-							attributeLocations[CheckInt(GetArray(attributeLocArray, current+1))] = CheckString(GetArray(attributeLocArray, current));
-							current += 2;
-						}
-					}
-
-					rt->enqueue([=] {
-						Dart_CObject reply;
-						Dart_CObject replyValues[3];
-						Dart_CObject *replyValuesPtr[3] = {&replyValues[0], &replyValues[1], &replyValues[2]};
-
-						reply.type = Dart_CObject_kArray;
-						reply.value.as_array.length = 3;
-						reply.value.as_array.values = replyValuesPtr;
-
-						replyValues[0].type = Dart_CObject_kInt32;
-						replyValues[0].value.as_int32 = static_cast<int32_t>(RenderThreadMessageType::ShaderResult);
-
-						replyValues[1].type = Dart_CObject_kInt64;
-						replyValues[1].value.as_int64 = shaderPointer;
-
-						if (!shader->compile(vs, fs, attributeLocations)) {
-							printf("Shader error: %s\n", shader->errorLog.c_str());
-
-							replyValues[2].type = Dart_CObject_kString;
-							replyValues[2].value.as_string = const_cast<char*>(shader->errorLog.c_str());
-						} else {
-							replyValues[2].type = Dart_CObject_kNull;
-						}
-
-						Dart_PostCObject(rt->replyPort, &reply);
-						// TODO: Add the shader as a resource!
-					});
-				}
-				break;
-			default:
-				printf("Unknown message type!\n");
-				abort();
-		}
-	}
+	void RenderThreadMessageHandler(Dart_Port dest_port_id, Dart_CObject *message);
 
 	static void RenderContext_destroy(RenderThread *rt) {
 		rt->enqueue([rt]{
@@ -202,6 +61,8 @@ namespace Graphics {
 		self.setField("_port", handle);
 	}
 
+	// Command
+
 	static void Command_dirty(Dart_NativeArguments _args) {
 		DartArgs args = _args;
 
@@ -209,10 +70,7 @@ namespace Graphics {
 		elem->dirty();
 	}
 
-	template <typename T>
-	static std::function<void()> MakeDeleter(T *obj) {
-		return [=]() {delete obj;};
-	}
+	// ClearCommand
 
 	static void _ClearCommand(Dart_NativeArguments _args) {
 		DartArgs args = _args;
@@ -253,6 +111,8 @@ namespace Graphics {
 		elem->data.mask = maskGL;
 	}
 
+	// Shader
+
 	static void _Shader(Dart_NativeArguments _args) {
 		DartArgs args = _args;
 
@@ -262,6 +122,8 @@ namespace Graphics {
 		args[0].setField("_ptr", spp);
 		GCHandle(args[0], sizeof(Shader), MakeDeleter(spp));
 	}
+
+	// BindShaderCommand
 
 	static void _BindShaderCommand(Dart_NativeArguments _args) {
 		DartArgs args = _args;
@@ -280,6 +142,8 @@ namespace Graphics {
 		elem->data.shader = *args[1].asPointer<std::shared_ptr<Shader>>();
 	}
 
+	// VertexArray
+
 	static void _VertexArray(Dart_NativeArguments _args) {
 		DartArgs args = _args;
 
@@ -295,6 +159,65 @@ namespace Graphics {
 		args[0].setField("_ptr", spp);
 		GCHandle(args[0], sizeof(VertexArray), MakeDeleter(spp));
 	}
+
+	enum class AttributeType {
+	  Byte, UnsignedByte, Short, UnsignedShort,
+	  Int, UnsignedInt, Float
+	};
+
+	static void _VertexArray_enableAndBind(Dart_NativeArguments _args) {
+		DartArgs args = _args;
+		auto vao = *args[0].getField("_ptr").asPointer<std::shared_ptr<VertexArray>>();
+		auto rt = args[1].asPointer<RenderThread>();
+		GLuint index = args[2].asUInt();
+		auto vbo = *args[3].asPointer<std::shared_ptr<VertexBuffer>>();
+		AttributeType type = static_cast<AttributeType>(args[4].asUInt());
+		GLint size = args[5].asInt();
+		bool normalized = args[6].asBool();
+		GLsizei stride = args[7].asInt();
+		GLintptr offset = args[8].asInt();
+
+		GLenum typeEnum;
+		switch (type) {
+			case AttributeType::Byte:
+				typeEnum = GL_BYTE;
+				break;
+			case AttributeType::UnsignedByte:
+				typeEnum = GL_UNSIGNED_BYTE;
+				break;
+			case AttributeType::Short:
+				typeEnum = GL_SHORT;
+				break;
+			case AttributeType::UnsignedShort:
+				typeEnum = GL_UNSIGNED_SHORT;
+				break;
+			case AttributeType::Int:
+				typeEnum = GL_INT;
+				break;
+			case AttributeType::UnsignedInt:
+				typeEnum = GL_UNSIGNED_INT;
+				break;
+			case AttributeType::Float:
+				typeEnum = GL_FLOAT;
+				break;
+			default:
+				printf("???\n");
+				abort();
+		}
+
+		rt->enqueue([=] {
+			glBindVertexArray(vao->id);
+			glBindBuffer(GL_ARRAY_BUFFER, vbo->id);
+
+			glVertexAttribPointer(index, size, typeEnum, normalized, stride, reinterpret_cast<void*>(offset));
+			glEnableVertexAttribArray(index);
+
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+			glBindVertexArray(0);
+		});
+	}
+
+	// VertexBuffer
 
 	enum class BufferUsage {
 		StreamDraw, StreamRead, StreamCopy,
@@ -365,62 +288,7 @@ namespace Graphics {
 		GCHandle(args[0], sizeof(VertexBuffer), MakeDeleter(spp));
 	}
 
-	enum class AttributeType {
-	  Byte, UnsignedByte, Short, UnsignedShort,
-	  Int, UnsignedInt, Float
-	};
-
-	static void _VertexArray_enableAndBind(Dart_NativeArguments _args) {
-		DartArgs args = _args;
-		auto vao = *args[0].getField("_ptr").asPointer<std::shared_ptr<VertexArray>>();
-		auto rt = args[1].asPointer<RenderThread>();
-		GLuint index = args[2].asUInt();
-		auto vbo = *args[3].asPointer<std::shared_ptr<VertexBuffer>>();
-		AttributeType type = static_cast<AttributeType>(args[4].asUInt());
-		GLint size = args[5].asInt();
-		bool normalized = args[6].asBool();
-		GLsizei stride = args[7].asInt();
-		GLintptr offset = args[8].asInt();
-
-		GLenum typeEnum;
-		switch (type) {
-			case AttributeType::Byte:
-				typeEnum = GL_BYTE;
-				break;
-			case AttributeType::UnsignedByte:
-				typeEnum = GL_UNSIGNED_BYTE;
-				break;
-			case AttributeType::Short:
-				typeEnum = GL_SHORT;
-				break;
-			case AttributeType::UnsignedShort:
-				typeEnum = GL_UNSIGNED_SHORT;
-				break;
-			case AttributeType::Int:
-				typeEnum = GL_INT;
-				break;
-			case AttributeType::UnsignedInt:
-				typeEnum = GL_UNSIGNED_INT;
-				break;
-			case AttributeType::Float:
-				typeEnum = GL_FLOAT;
-				break;
-			default:
-				printf("???\n");
-				abort();
-		}
-
-		rt->enqueue([=] {
-			glBindVertexArray(vao->id);
-			glBindBuffer(GL_ARRAY_BUFFER, vbo->id);
-
-			glVertexAttribPointer(index, size, typeEnum, normalized, stride, reinterpret_cast<void*>(offset));
-			glEnableVertexAttribArray(index);
-
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
-			glBindVertexArray(0);
-		});
-	}
+	// BindVertexArrayCommand
 
 	static void _BindVertexArrayCommand(Dart_NativeArguments _args) {
 		DartArgs args = _args;
@@ -441,6 +309,8 @@ namespace Graphics {
 
 		spp->data.vao = vao;
 	}
+
+	// DrawArraysCommand
 
 	static void _DrawArraysCommand(Dart_NativeArguments _args) {
 		DartArgs args = _args;
@@ -498,6 +368,8 @@ namespace Graphics {
 		spp->data.count = args[3].asUInt();
 	}
 
+	// CapabilityCommand
+
 	static void _CapabilityCommand(Dart_NativeArguments _args) {
 		DartArgs args = _args;
 
@@ -554,6 +426,8 @@ namespace Graphics {
 		spp->data.cap = capEnum;
 	}
 
+	// SetUniformCommand
+
 	static void _SetUniformCommand(Dart_NativeArguments _args) {
 		DartArgs args = _args;
 
@@ -583,6 +457,8 @@ namespace Graphics {
 
 		spp->data.count = count;
 	}
+
+	// CommandBuffer
 
 	static void _CommandBuffer(Dart_NativeArguments _args) {
 		DartArgs args = _args;
