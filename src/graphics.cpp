@@ -9,6 +9,7 @@
 #include "command/bind_vertex_array.hpp"
 #include "command/clear.hpp"
 #include "command/draw_arrays.hpp"
+#include "command/draw_elements.hpp"
 #include "command/capability.hpp"
 #include "command/set_uniform.hpp"
 
@@ -454,6 +455,61 @@ namespace Graphics {
 		spp->data.count = args[3].asUInt();
 	}
 
+	// DrawElementsCommand
+
+	static void _DrawElementsCommand(Dart_NativeArguments _args) {
+		DartArgs args = _args;
+
+		DrawElementsCommandElement *command = new DrawElementsCommandElement();
+		auto spp = new std::shared_ptr<DrawElementsCommandElement>(command);
+
+		auto object = args[0];
+		object.setField("_ptr", spp);
+		GCHandle(object, sizeof(DrawElementsCommandElement), MakeDeleter(spp));
+	}
+
+	static void _DrawElementsCommand_setData(Dart_NativeArguments _args) {
+		DartArgs args = _args;
+
+		auto spp = *args[0].getField("_ptr").asPointer<std::shared_ptr<DrawElementsCommandElement>>();
+
+		spp->data.ibo = *args[1].asPointer<std::shared_ptr<IndexBuffer>>();
+
+		auto mode = static_cast<PrimitiveMode>(args[2].asUInt());
+		GLenum modeEnum;
+
+		switch (mode) {
+			case PrimitiveMode::Points:
+				modeEnum = GL_POINTS;
+				break;
+			case PrimitiveMode::LineStrip:
+				modeEnum = GL_LINE_STRIP;
+				break;
+			case PrimitiveMode::LineLoop:
+				modeEnum = GL_LINE_LOOP;
+				break;
+			case PrimitiveMode::Lines:
+				modeEnum = GL_LINES;
+				break;
+			case PrimitiveMode::TriangleStrip:
+				modeEnum = GL_TRIANGLE_STRIP;
+				break;
+			case PrimitiveMode::TriangleFan:
+				modeEnum = GL_TRIANGLE_FAN;
+				break;
+			case PrimitiveMode::Triangles:
+				modeEnum = GL_TRIANGLES;
+				break;
+			default:
+				printf("???\n");
+				abort();
+		}
+
+		spp->data.mode = modeEnum;
+		spp->data.first = args[3].asInt();
+		spp->data.count = args[4].asUInt();
+	}
+
 	// CapabilityCommand
 
 	static void _CapabilityCommand(Dart_NativeArguments _args) {
@@ -587,6 +643,9 @@ namespace Graphics {
 
 		{"DrawArraysCommand", &_DrawArraysCommand},
 		{"DrawArraysCommand::setData", &_DrawArraysCommand_setData},
+
+		{"DrawElementsCommand", &_DrawElementsCommand},
+		{"DrawElementsCommand::setData", &_DrawElementsCommand_setData},
 
 		{"CapabilityCommand", &_CapabilityCommand},
 		{"CapabilityCommand::set", &_CapabilityCommand_set},
