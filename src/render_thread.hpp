@@ -45,7 +45,7 @@ public:
   }
 
   bool clean() {
-    return _dirty.exchange(true);
+    return _dirty.exchange(false);
   }
 
 private:
