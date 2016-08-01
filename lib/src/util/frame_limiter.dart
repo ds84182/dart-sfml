@@ -5,6 +5,7 @@ class FrameLimiter {
 
   final Stopwatch _stopwatch = new Stopwatch();
   Duration _frameDuration;
+  bool _unlimited;
   Duration get frameDuration => _frameDuration;
 
   int _framecount = 0;
@@ -16,7 +17,12 @@ class FrameLimiter {
   Stream<int> get fpsStream => _fpsStreamCtrl.stream;
 
   FrameLimiter(this.framerate) {
-    _frameDuration = const Duration(seconds: 1)~/framerate;
+    if (framerate == 0) {
+      _unlimited = true;
+      _frameDuration = Duration.ZERO;
+    } else {
+      _frameDuration = const Duration(seconds: 1)~/framerate;
+    }
     _stopwatch.start();
     _fpsStopwatch.start();
   }
